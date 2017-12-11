@@ -39,11 +39,11 @@ def percentile(N, percent):
 
 
 class State:
-    def __init__(self):
+    def __init__(self, gauges=None):
         self.counters = Counter()
         self.timers = {}
         self.timers_count = Counter()
-        self.gauges = {}
+        self.gauges = {} if gauges is None else gauges
         self.sets = {}
 
     def handle_counter(self, name, value, rate):
@@ -54,7 +54,6 @@ class State:
         self.timers_count[name] += 1 / rate
 
     def handle_gauge(self, name, value, rate):
-        print(value)
         value, is_delta = value
         if is_delta:
             try:
@@ -115,18 +114,13 @@ def timer(interval):  # pragma: no cover
             yield next_tick
 
 
-def swap():  # pragma: no cover
-    global state
-    with flush_lock:
-        lstate = state
-        state = State()
-    return lstate
+def swap(oldstate):
+    return State(oldstate.gauges.copy()), oldstate
 
 
 def get_connection(host, port):  # pragma: no cover
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 128)
-    print('!!', s.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
     s.settimeout(5)
     wait = 1
     backoff = 1.5
@@ -145,9 +139,13 @@ def get_connection(host, port):  # pragma: no cover
 
 
 def flusher():  # pragma: no cover
+    global state
     cn = None
     for ts in timer(FLUSH_INTERVAL):
-        msg = payload = swap().to_graphite(ts)
+        with flush_lock:
+            state, oldstate = swap(state)
+
+        msg = payload = oldstate.to_graphite(ts)
         if not msg:
             continue
 
@@ -247,16 +245,23 @@ if __name__ == '__main__':  # pragma: no cover
                         help='increase verbosity', dest='verbosity')
 
     parser.add_argument('-l',dest='listen', default=f'{HOST}:{PORT}',
-                        help='listen on host:port, default %(default)s',
+                        help='listen on host:port, default is %(default)s',
                         metavar='host[:port]', type=host_port(HOST, PORT))
 
     parser.add_argument('-f', dest='flush_interval', type=int, default=FLUSH_INTERVAL,
                         help='flush interval, default is %(default)d seconds',
                         metavar='seconds')
 
-    parser.add_argument('-p', dest='percentiles', default=','.join(map(str, PERCENTILES)),
+    parser.add_argument('--percentiles', dest='percentiles', default=','.join(map(str, PERCENTILES)),
                         help=f'timer percentiles as csv, default is %(default)r',
                         metavar='p1,p2,...', type=csvint)
+
+    parser.add_argument('-p', '--prefix', dest='prefix',
+                        help=f'prefix to all metrics', metavar='prefix')
+
+    parser.add_argument('--recycle', dest='recycle', default=RECYCLE, type=int,
+                        help=f'reconnect to carbon after this amount of seconds, default is %(default)ds',
+                        metavar='seconds')
 
     parser.add_argument('-g', dest='graphite', required=True,
                         help=f'graphite host:port for sending metrics, default port is {GRAPHITE_PORT}',
@@ -268,6 +273,8 @@ if __name__ == '__main__':  # pragma: no cover
     HOST, PORT = args.listen
     GRAPHITE_HOST, GRAPHITE_PORT = args.graphite
     PERCENTILES = args.percentiles
+    PREFIX = ((args.prefix or PREFIX.decode()).rstrip('.') + '.').encode()
+    RECYCLE = args.recycle
 
     if args.verbosity > 1:
         level = 'DEBUG'

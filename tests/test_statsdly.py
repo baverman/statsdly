@@ -1,6 +1,6 @@
 import pytest
 import statsdly
-from statsdly import handle_data, State, host_port, csvint
+from statsdly import handle_data, State, host_port, csvint, swap
 
 statsdly.PERCENTILES = 50,
 
@@ -42,6 +42,16 @@ def test_delta_gauge_with_empty_key():
     state = State()
     handle_data(b'boo:+1|g\n', state)
     assert list(state.extract()) == []
+
+
+def test_gauge_should_keep_values_between_flushes():
+    state = State()
+    handle_data(b'boo:10|g\n', state)
+    state, oldstate = swap(state)
+
+    handle_data(b'boo:+10|g\n', state)
+    assert list(state.extract()) == [(b'boo', 20)]
+    assert list(oldstate.extract()) == [(b'boo', 10)]
 
 
 def test_to_graphite():
