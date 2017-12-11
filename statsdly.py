@@ -7,9 +7,10 @@ from threading import Lock, Thread
 from collections import Counter
 from bisect import insort
 from math import floor, ceil
-from statistics import mean
+from statistics import mean, pstdev
 from urllib.parse import urlsplit
 
+version = '0.3'
 PREFIX = b''
 FLUSH_INTERVAL = 60
 HOST = '127.0.0.1'
@@ -74,9 +75,11 @@ class State:
             yield b'%s.count' % k, v
 
         for k, v in self.timers.items():
+            m = mean(v)
             yield b'%s.upper' % k, v[-1]
             yield b'%s.lower' % k, v[0]
-            yield b'%s.mean' % k, mean(v)
+            yield b'%s.mean' % k, m
+            yield b'%s.stdev' % k, pstdev(v, m)
             for p in PERCENTILES:
                 yield b'%s.p%d' % (k, p), percentile(v, p)
 
@@ -209,7 +212,7 @@ def handle_data(data, state):
         handler and handler(state, name, value, rate)
 
 
-def main():  # pragma: no cover
+def loop():  # pragma: no cover
     flush_thread = Thread(target=flusher)
     flush_thread.daemon = True
     flush_thread.start()
@@ -238,7 +241,9 @@ def csvint(text):
     return list(map(int, filter(None, text.split(','))))
 
 
-if __name__ == '__main__':  # pragma: no cover
+def main():  # pragma: no cover
+    global FLUSH_INTERVAL, HOST, PORT, GRAPHITE_HOST, GRAPHITE_PORT, \
+           PERCENTILES, PERCENTILES, RECYCLE, PREFIX
     parser = argparse.ArgumentParser(description='StatsD server')
 
     parser.add_argument('-v', action='count', default=0,
@@ -285,6 +290,10 @@ if __name__ == '__main__':  # pragma: no cover
     logging.basicConfig(level=level, format='[%(asctime)s] %(name)s:%(levelname)s %(message)s')
 
     try:
-        main()
+        loop()
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == '__main__':  # pragma: no cover
+    main()

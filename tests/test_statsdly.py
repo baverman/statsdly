@@ -16,14 +16,14 @@ def test_timer_odd():
     handle_data(b'boo:1|ms\nboo:2|ms\nboo:3|ms|@0.1\n', state)
     assert list(state.extract()) == [(b'boo.count', 12), (b'boo.upper', 0.003),
                                      (b'boo.lower', 0.001), (b'boo.mean', 0.002),
-                                     (b'boo.p50', 0.002)]
+                                     (b'boo.stdev', 0.000816496580927726), (b'boo.p50', 0.002)]
 
 def test_timer_even():
     state = State()
     handle_data(b'boo:1|ms\nboo:2|ms\nboo:3|ms\nboo:4|ms\n', state)
     assert list(state.extract()) == [(b'boo.count', 4), (b'boo.upper', 0.004),
                                      (b'boo.lower', 0.001), (b'boo.mean', 0.0025),
-                                     (b'boo.p50', 0.0025)]
+                                     (b'boo.stdev', 0.001118033988749895), (b'boo.p50', 0.0025)]
 
 
 def test_set():
