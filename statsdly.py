@@ -278,7 +278,8 @@ def main():  # pragma: no cover
     HOST, PORT = args.listen
     GRAPHITE_HOST, GRAPHITE_PORT = args.graphite
     PERCENTILES = args.percentiles
-    PREFIX = ((args.prefix or PREFIX.decode()).rstrip('.') + '.').encode()
+    if args.prefix:
+        PREFIX = (args.prefix.rstrip('.') + '.').encode()
     RECYCLE = args.recycle
 
     if args.verbosity > 1:
