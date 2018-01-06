@@ -1,4 +1,4 @@
-dev
+0.4
 ===
 
 * Fix prefix

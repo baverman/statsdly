@@ -10,7 +10,7 @@ from math import floor, ceil
 from statistics import mean, pstdev
 from urllib.parse import urlsplit
 
-version = '0.3'
+version = '0.4'
 PREFIX = b''
 FLUSH_INTERVAL = 60
 HOST = '127.0.0.1'
