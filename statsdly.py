@@ -251,7 +251,7 @@ def main():  # pragma: no cover
 
     parser.add_argument('-l',dest='listen', default=f'{HOST}:{PORT}',
                         help='listen on host:port, default is %(default)s',
-                        metavar='host[:port]', type=host_port(HOST, PORT))
+                        metavar='host[:port]', type=host_port(PORT, HOST))
 
     parser.add_argument('-f', dest='flush_interval', type=int, default=FLUSH_INTERVAL,
                         help='flush interval, default is %(default)d seconds',
