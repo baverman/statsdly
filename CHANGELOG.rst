@@ -1,5 +1,5 @@
-dev
-===
+0.4.1
+=====
 
 * Fix listen option
 
